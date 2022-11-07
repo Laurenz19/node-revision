@@ -1,4 +1,5 @@
 const router = require('express').Router()
+const Joi = require('joi')
 
 let courses = [
     {id:1, title:'Course 1'},
