@@ -1,91 +1,39 @@
-const express= require('express')
+const debug = require('debug')('app:startup')
+const config = require('config')
+const helmet = require('helmet')
+const morgan = require('morgan')
 const Joi = require('joi')
+const logger = require('./middleware/logger')
+const course = require('./routes/course')
+const home = require('./routes/home')
+const express= require('express')
 const app = express()
 const port = process.env.PORT || 3000
 
-app.use(express.json()) // a piece of middleware that allows us to use req.body
 
-let courses = [
-    {id:1, title:'Course 1'},
-    {id:2, title:'Course 2'},
-    {id:3, title:'Course 3'}
-]
-app.get('/', (req, res)=>{
-    res.send('Laurenzio')
-})
+// console.log(`NODE_ENV: ${process.env.NODE_ENV}`)
+console.log(`app: ${app.get('env')}`)
+// console.log(config.get('name'))
+// console.log(config.get('mail.host'))
+// console.log(`password: ${config.get('mail.password')}`)
 
-app.post('/api/courses', (req, res)=>{
+/**
+ * Install Middleware in Request 
+ * processing pipeline
+ */
+app.use(express.json()) // a piece of middleware that allows us to parse the req.body to json
+app.use(express.urlencoded( {extended:true} ))
+app.use(express.static('public'))
+app.use(helmet())
+app.use(logger)
 
-    const {error} = validationCourse(req.body)
-    
-    if(error){   
-        res.status(400).send(error.details[0].message)
-        return;
-    }
-    
-    const course = {
-        id: courses.length + 1,
-        title: req.body.title
-    }
-
-    courses.push(course)
-    res.send(course)
-})
-
-app.get('/api/courses/:id', (req, res)=>{
-    
-    const course = courses.find(item=> item.id == req.params.id)
-    if(!course) {
-        res.status(404).send(`Course with ID ${req.params.id} was not found`)
-        return;
-    }
-    
-    res.send(course)
-})
-
-app.put('/api/courses/:id', (req, res)=>{
-    
-    //Check if the course exists
-    const course = courses.find(item=> item.id == req.params.id)
-    if(!course) {
-        res.status(404).send(`Course with ID ${req.params.id} was not found`)
-        return;
-    }
-
-    //Validation
-    const {error} = validationCourse(req.body)
-    if(error) {
-        res.status(400).send(error.details[0].message)
-        return;
-    }
-
-    course.title = req.body.title
-    res.send(course)
-
-})
-
-app.delete('/api/courses/:id', (req, res)=>{
-    
-    //Check if the course exists
-    const course = courses.find(item=> item.id == req.params.id)
-    if(!course) {
-        res.status(404).send(`Course with ID ${req.params.id} was not found`)
-        return;
-    }
-
-    const index = courses.indexOf(course)
-    courses.splice(index, 1)
-    res.send(courses)
-})
-
-const validationCourse = (course)=>{
-    
-    const schema = Joi.object({
-        title: Joi.string().min(3).required()
-    })
-
-    return schema.validate(course)
+if(app.get('env') === 'development'){
+    app.use(morgan('dev'))
+    debug('morgan enabled...') // instead of console.log('morgan enabled') we can use debug
 }
+
+app.use('/api/courses', course)
+app.use('/', home)
 
 
 app.listen(port, ()=>{
